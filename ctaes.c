@@ -309,6 +309,7 @@ static void InvSubBytes(AES_state *s) {
 static uint32_t SubWord(uint32_t x) {
     AES_state s;
     int b;
+    uint32_t r = 0;
     /* Convert to sliced form */
     for (b = 0; b < 8; b++) {
         s.slice[b] = (x & 1) | ((x >> 7) & 2) | ((x >> 14) & 4) | ((x >> 21) & 8);
@@ -317,7 +318,6 @@ static uint32_t SubWord(uint32_t x) {
     /* Apply the transformation in sliced form */
     SubBytes(&s);
     /* Convert back to word form */
-    uint32_t r = 0;
     for (b = 0; b < 8; b++) {
         uint32_t t = s.slice[b];
         r |= ((t & 1) | (t & 2) << 7 | (t & 4) << 14 | (t & 8) << 21) << b;
@@ -329,7 +329,7 @@ static void ShiftRows(AES_state* s) {
     int i;
     for (i = 0; i < 8; i++) {
         uint16_t v = s->slice[i];
-        s->slice[0] = (v & 0xF) | (v & 0x10) << 3 | (v & 0xE0) >> 1 | (v & 0x300) << 2 | (v & 0xC00) >> 2 | (v & 0x7000) << 1 | (v & 0x8000) >> 3;
+        s->slice[i] = (v & 0xF) | (v & 0x10) << 3 | (v & 0xE0) >> 1 | (v & 0x300) << 2 | (v & 0xC00) >> 2 | (v & 0x7000) << 1 | (v & 0x8000) >> 3;
     }
 }
 
@@ -487,13 +487,15 @@ static void AES_decrypt(const AES_state* rounds, int nrounds, unsigned char* pla
     AES_state s;
     int round;
 
+    rounds += nrounds;
+
     LoadBytes(&s, cipher16);
-    AddRoundKey(&s, rounds++);
+    AddRoundKey(&s, rounds--);
 
     for (round = 1; round < nrounds; round++) {
         InvShiftRows(&s);
         InvSubBytes(&s);
-        AddRoundKey(&s, rounds++);
+        AddRoundKey(&s, rounds--);
         InvMixColumns(&s);
     }
 
