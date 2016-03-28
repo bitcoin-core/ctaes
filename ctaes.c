@@ -21,36 +21,27 @@
  * 12 13 14 15
  */
 
-/** Load 4 32-bit MSB words representing columns of data into 8 sliced integers */
-static void LoadWords(AES_state* s, uint32_t w0, uint32_t w1, uint32_t w2, uint32_t w3) {
+/** Convert a byte to sliced form, storing it corresponding to given row and column in s */
+static void LoadByte(AES_state* s, unsigned char byte, int r, int c) {
+    int i;
+    for (i = 0; i < 8; i++) {
+        s->slice[i] |= (byte & 1) << (r * 4 + c);
+        byte >>= 1;
+    }
+}
+
+/** Load 16 bytes of data into 8 sliced integers */
+static void LoadBytes(AES_state *s, const unsigned char* data16) {
     int b, c;
     for (b = 0; b < 8; b++) {
         s->slice[b] = 0;
     }
     for (c = 0; c < 4; c++) {
         int r;
-        uint32_t w = c & 2 ? (c & 1 ? w3 : w2) : (c & 1 ? w1 : w0);
         for (r = 0; r < 4; r++) {
-            int i;
-            uint8_t v = w >> 24;
-            w <<= 8;
-            for (i = 0; i < 8; i++) {
-                s->slice[i] |= (v & 1) << (r * 4 + c);
-                v >>= 1;
-            }
+            LoadByte(s, *(data16++), r, c);
         }
     }
-}
-
-/** Load 16 bytes of data into 8 sliced integers */
-static void LoadBytes(AES_state *s, const unsigned char* data16) {
-    uint32_t w[4];
-    int i;
-    for (i = 0; i < 4; i++) {
-        w[i] = ((uint32_t)data16[0]) << 24 | ((uint32_t)data16[1]) << 16 | ((uint32_t)data16[2]) << 8 | ((uint32_t)data16[3]);
-        data16 += 4;
-    }
-    LoadWords(s, w[0], w[1], w[2], w[3]);
 }
 
 /** Convert 8 sliced integers into 16 bytes of data */
@@ -267,26 +258,6 @@ static void SubBytes(AES_state *s, int inv) {
     }
 }
 
-/* Apply the SubBytes transform to the bytes of an unsliced word */
-static uint32_t SubWord(uint32_t x) {
-    AES_state s;
-    uint32_t r = 0;
-    int b;
-    /* Convert to sliced form */
-    for (b = 0; b < 8; b++) {
-        s.slice[b] = (x & 1) | ((x >> 7) & 2) | ((x >> 14) & 4) | ((x >> 21) & 8);
-        x >>= 1;
-    }
-    /* Apply the transformation in sliced form */
-    SubBytes(&s, 0);
-    /* Convert back to word form */
-    for (b = 0; b < 8; b++) {
-        uint32_t t = s.slice[b];
-        r |= ((t & 1) | (t & 2) << 7 | (t & 4) << 14 | (t & 8) << 21) << b;
-    }
-    return r;
-}
-
 static void ShiftRows(AES_state* s) {
     int i;
     for (i = 0; i < 8; i++) {
@@ -367,6 +338,43 @@ static void AddRoundKey(AES_state* s, const AES_state* round) {
     }
 }
 
+/** column_0(s) = column_c(a) */
+static void GetOneColumn(AES_state* s, const AES_state* a, int c) {
+    int b;
+    for (b = 0; b < 8; b++) {
+        s->slice[b] = (a->slice[b] >> c) & 0x1111;
+    }
+}
+
+/** column_c1(r) |= (column_0(s) ^= column_c2(a)) */
+static void KeySetupColumnMix(AES_state* s, AES_state* r, const AES_state* a, int c1, int c2) {
+    int b;
+    for (b = 0; b < 8; b++) {
+        r->slice[b] |= ((s->slice[b] ^= ((a->slice[b] >> c2) & 0x1111)) & 0x1111) << c1;
+    }
+}
+
+/** Rotate the rows in s one position upwards, and xor in r */
+static void KeySetupTransform(AES_state* s, const AES_state* r) {
+    int b;
+    for (b = 0; b < 8; b++) {
+        s->slice[b] = ((s->slice[b] >> 4) | (s->slice[b] << 12)) ^ r->slice[b];
+    }
+}
+
+/* Multiply the cells in s by x, as polynomials over GF(2) mod x^8 + x^4 + x^3 + x + 1 */
+static void MultX(AES_state* s) {
+    uint16_t top = s->slice[7];
+    s->slice[7] = s->slice[6];
+    s->slice[6] = s->slice[5];
+    s->slice[5] = s->slice[4];
+    s->slice[4] = s->slice[3] ^ top;
+    s->slice[3] = s->slice[2] ^ top;
+    s->slice[2] = s->slice[1];
+    s->slice[1] = s->slice[0] ^ top;
+    s->slice[0] = top;
+}
+
 /** Expand the cipher key into the key schedule.
  *
  *  state must be a pointer to an array of size nrounds + 1.
@@ -381,40 +389,40 @@ static void AES_setup(AES_state* rounds, const uint8_t* key, int nkeywords, int 
     int i;
 
     /* The one-byte round constant */
-    uint8_t rcon = 0x01;
-    /* A ring buffer containing the last 8 round key words (4 are consumed in every round) */
-    uint32_t rk[8];
+    AES_state rcon = {{1,0,0,0,0,0,0,0}};
     /* The number of the word being generated, modulo nkeywords */
     int pos = 0;
+    /* The column representing the word currently being processed */
+    AES_state column;
 
-    /* The first nkeywords round key words are just taken from the key directly */
-    for (i = 0; i < nkeywords; i++) {
-        rk[i] = ((uint32_t)key[0]) << 24 | ((uint32_t)key[1]) << 16 | ((uint32_t)key[2]) << 8 | key[3];
-        if ((i & 3) == 3) {
-            /* If we've generated 4 round key words, convert them to sliced form for use in one round */
-            LoadWords(rounds++, rk[i - 3], rk[i - 2], rk[i - 1], rk[i]);
+    for (i = 0; i < nrounds + 1; i++) {
+        int b;
+        for (b = 0; b < 8; b++) {
+            rounds[i].slice[b] = 0;
         }
-        key += 4;
     }
 
+    /* The first nkeywords round columns are just taken from the key directly. */
+    for (i = 0; i < nkeywords; i++) {
+        int r;
+        for (r = 0; r < 4; r++) {
+            LoadByte(&rounds[i >> 2], *(key++), r, i & 3);
+        }
+    }
+
+    GetOneColumn(&column, &rounds[(nkeywords - 1) >> 2], (nkeywords - 1) & 3);
+
     for (i = nkeywords; i < 4 * (nrounds + 1); i++) {
-        /* Get the previous round word */
-        uint32_t temp = rk[(i + 7) & 7];
-        /* Transform temp */
+        /* Transform column */
         if (pos == 0) {
-            temp = SubWord(temp << 8 | temp >> 24) ^ ((uint32_t)rcon) << 24;
-            /* Compute the next round constant (multiply by x modulo x^8 + x^4 + x^3 + x + 1) */
-            rcon = ((-(rcon >> 7)) & 0x1B) ^ (rcon << 1);
+            SubBytes(&column, 0);
+            KeySetupTransform(&column, &rcon);
+            MultX(&rcon);
         } else if (nkeywords > 6 && pos == 4) {
-            temp = SubWord(temp);
+            SubBytes(&column, 0);
         }
         if (++pos == nkeywords) pos = 0;
-        /* Compute the next round key word */
-        rk[i & 7] = rk[(i + 8 - nkeywords) & 7] ^ temp;
-        if ((i & 3) == 3) {
-            /* If we've generated 4 round key words, convert them to sliced form for use in one round */
-            LoadWords(rounds++, rk[(i + 5) & 7], rk[(i + 6) & 7], rk[(i + 7) & 7], rk[i & 7]);
-        }
+        KeySetupColumnMix(&column, &rounds[i >> 2], &rounds[(i - nkeywords) >> 2], i & 3, (i - nkeywords) & 3);
     }
 }
 
