@@ -303,27 +303,25 @@ static void InvShiftRows(AES_state* s) {
 
 static void MixColumns(AES_state* s) {
     /* b(r,c) = 02 * a(r,c) + 02 * a(r+1,c) + a(r+1,c) + a(r+2,c) + a(r+3,c) */
+    uint16_t a123[8];
+    uint16_t a01[8];
+    int i;
 
-    uint16_t a0 = s->slice[0], a1 = s->slice[1], a2 = s->slice[2], a3 = s->slice[3];
-    uint16_t a4 = s->slice[4], a5 = s->slice[5], a6 = s->slice[6], a7 = s->slice[7];
+    for (i = 0; i < 8; i++) {
+        uint16_t a;
+        a = s->slice[i];
+        a01[i] = a ^ ROT(a,1);
+        a123[i] = ROT(a01[i],1) ^ ROT(a, 3);
+    }
 
-    uint16_t a0_01 = a0 ^ ROT(a0,1), a0_123 = ROT(a0_01,1) ^ ROT(a0, 3);
-    uint16_t a1_01 = a1 ^ ROT(a1,1), a1_123 = ROT(a1_01,1) ^ ROT(a1, 3);
-    uint16_t a2_01 = a2 ^ ROT(a2,1), a2_123 = ROT(a2_01,1) ^ ROT(a2, 3);
-    uint16_t a3_01 = a3 ^ ROT(a3,1), a3_123 = ROT(a3_01,1) ^ ROT(a3, 3);
-    uint16_t a4_01 = a4 ^ ROT(a4,1), a4_123 = ROT(a4_01,1) ^ ROT(a4, 3);
-    uint16_t a5_01 = a5 ^ ROT(a5,1), a5_123 = ROT(a5_01,1) ^ ROT(a5, 3);
-    uint16_t a6_01 = a6 ^ ROT(a6,1), a6_123 = ROT(a6_01,1) ^ ROT(a6, 3);
-    uint16_t a7_01 = a7 ^ ROT(a7,1), a7_123 = ROT(a7_01,1) ^ ROT(a7, 3);
-
-    s->slice[0] = a7_01 ^ a0_123;
-    s->slice[1] = a7_01 ^ a0_01 ^ a1_123;
-    s->slice[2] = a1_01 ^ a2_123;
-    s->slice[3] = a7_01 ^ a2_01 ^ a3_123;
-    s->slice[4] = a7_01 ^ a3_01 ^ a4_123;
-    s->slice[5] = a4_01 ^ a5_123;
-    s->slice[6] = a5_01 ^ a6_123;
-    s->slice[7] = a6_01 ^ a7_123;
+    s->slice[0] = a01[7] ^ a123[0];
+    s->slice[1] = a01[7] ^ a01[0] ^ a123[1];
+    s->slice[2] = a01[1] ^ a123[2];
+    s->slice[3] = a01[7] ^ a01[2] ^ a123[3];
+    s->slice[4] = a01[7] ^ a01[3] ^ a123[4];
+    s->slice[5] = a01[4] ^ a123[5];
+    s->slice[6] = a01[5] ^ a123[6];
+    s->slice[7] = a01[6] ^ a123[7];
 }
 
 static void InvMixColumns(AES_state* s) {
@@ -333,27 +331,31 @@ static void InvMixColumns(AES_state* s) {
      *          02 * (a(r,c) + a(r+1,c)) +
      *          01 * (a(r+1,c) + a(r+2,c) + a(r+3,c))
      */
+    uint16_t a01[8];
+    uint16_t a12[8];
+    uint16_t a123[8];
+    uint16_t a0123[8];
+    uint16_t a02[8];
+    int i;
 
-    uint16_t a0 = s->slice[0], a1 = s->slice[1], a2 = s->slice[2], a3 = s->slice[3];
-    uint16_t a4 = s->slice[4], a5 = s->slice[5], a6 = s->slice[6], a7 = s->slice[7];
+    for (i = 0; i < 8; i++) {
+        uint16_t a;
+        a = s->slice[i];
+        a01[i] = a ^ ROT(a,1);
+        a12[i] = ROT(a01[i], 1);
+        a123[i] = a12[i] ^ ROT(a, 3);
+        a0123[i] = a ^ a123[i];
+        a02[i] = a01[i] ^ a12[i];
+    }
 
-    uint16_t a0_01 = a0 ^ ROT(a0, 1), a0_12 = ROT(a0_01, 1), a0_123 = a0_12 ^ ROT(a0, 3), a0_0123 = a0 ^ a0_123, a0_02 = a0_01 ^ a0_12;
-    uint16_t a1_01 = a1 ^ ROT(a1, 1), a1_12 = ROT(a1_01, 1), a1_123 = a1_12 ^ ROT(a1, 3), a1_0123 = a1 ^ a1_123, a1_02 = a1_01 ^ a1_12;
-    uint16_t a2_01 = a2 ^ ROT(a2, 1), a2_12 = ROT(a2_01, 1), a2_123 = a2_12 ^ ROT(a2, 3), a2_0123 = a2 ^ a2_123, a2_02 = a2_01 ^ a2_12;
-    uint16_t a3_01 = a3 ^ ROT(a3, 1), a3_12 = ROT(a3_01, 1), a3_123 = a3_12 ^ ROT(a3, 3), a3_0123 = a3 ^ a3_123, a3_02 = a3_01 ^ a3_12;
-    uint16_t a4_01 = a4 ^ ROT(a4, 1), a4_12 = ROT(a4_01, 1), a4_123 = a4_12 ^ ROT(a4, 3), a4_0123 = a4 ^ a4_123, a4_02 = a4_01 ^ a4_12;
-    uint16_t a5_01 = a5 ^ ROT(a5, 1), a5_12 = ROT(a5_01, 1), a5_123 = a5_12 ^ ROT(a5, 3), a5_0123 = a5 ^ a5_123, a5_02 = a5_01 ^ a5_12;
-    uint16_t a6_01 = a6 ^ ROT(a6, 1), a6_12 = ROT(a6_01, 1), a6_123 = a6_12 ^ ROT(a6, 3), a6_0123 = a6 ^ a6_123, a6_02 = a6_01 ^ a6_12;
-    uint16_t a7_01 = a7 ^ ROT(a7, 1), a7_12 = ROT(a7_01, 1), a7_123 = a7_12 ^ ROT(a7, 3), a7_0123 = a7 ^ a7_123, a7_02 = a7_01 ^ a7_12;
-
-    s->slice[0] = a0_123 ^ a7_01 ^ a6_02 ^ a5_0123;
-    s->slice[1] = a1_123 ^ a0_01 ^ a7_12 ^ a6_02 ^ a5_0123 ^ a6_0123;
-    s->slice[2] = a2_123 ^ a1_01 ^ a0_02 ^ a7_02 ^ a6_0123 ^ a7_0123;
-    s->slice[3] = a3_123 ^ a2_01 ^ a7_01 ^ a1_02 ^ a6_02 ^ a0_0123 ^ a5_0123 ^ a7_0123;
-    s->slice[4] = a4_123 ^ a3_01 ^ a7_12 ^ a2_02 ^ a6_02 ^ a1_0123 ^ a5_0123 ^ a6_0123;
-    s->slice[5] = a5_123 ^ a4_01 ^ a3_02 ^ a7_02 ^ a2_0123 ^ a6_0123 ^ a7_0123;
-    s->slice[6] = a6_123 ^ a5_01 ^ a4_02 ^ a3_0123 ^ a7_0123;
-    s->slice[7] = a7_123 ^ a6_01 ^ a5_02 ^ a4_0123;
+    s->slice[0] = a123[0] ^ a01[7] ^ a02[6] ^ a0123[5];
+    s->slice[1] = a123[1] ^ a01[0] ^ a12[7] ^ a02[6] ^ a0123[5] ^ a0123[6];
+    s->slice[2] = a123[2] ^ a01[1] ^ a02[0] ^ a02[7] ^ a0123[6] ^ a0123[7];
+    s->slice[3] = a123[3] ^ a01[2] ^ a01[7] ^ a02[1] ^ a02[6] ^ a0123[0] ^ a0123[5] ^ a0123[7];
+    s->slice[4] = a123[4] ^ a01[3] ^ a12[7] ^ a02[2] ^ a02[6] ^ a0123[1] ^ a0123[5] ^ a0123[6];
+    s->slice[5] = a123[5] ^ a01[4] ^ a02[3] ^ a02[7] ^ a0123[2] ^ a0123[6] ^ a0123[7];
+    s->slice[6] = a123[6] ^ a01[5] ^ a02[4] ^ a0123[3] ^ a0123[7];
+    s->slice[7] = a123[7] ^ a01[6] ^ a02[5] ^ a0123[4];
 }
 
 void AddRoundKey(AES_state* s, const AES_state* round) {
