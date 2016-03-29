@@ -88,6 +88,24 @@ static void bench_AES128_decrypt(void* data) {
     }
 }
 
+static void bench_AES128_encrypt_par(void* data) {
+    const AES128_ctx* ctx = (const AES128_ctx*)data;
+    unsigned char scratch[128] = {0};
+    int i;
+    for (i = 0; i < 4000000 / 128; i++) {
+        AES128_encrypt(ctx, 8, scratch, scratch);
+    }
+}
+
+static void bench_AES128_decrypt_par(void* data) {
+    const AES128_ctx* ctx = (const AES128_ctx*)data;
+    unsigned char scratch[128] = {0};
+    int i;
+    for (i = 0; i < 4000000 / 128; i++) {
+        AES128_decrypt(ctx, 8, scratch, scratch);
+    }
+}
+
 static void bench_AES192_init(void* data) {
     AES192_ctx* ctx = (AES192_ctx*)data;
     int i;
@@ -117,6 +135,24 @@ static void bench_AES192_decrypt(void* data) {
     int i;
     for (i = 0; i < 4000000 / 16; i++) {
         AES192_decrypt(ctx, 1, scratch, scratch);
+    }
+}
+
+static void bench_AES192_encrypt_par(void* data) {
+    const AES192_ctx* ctx = (const AES192_ctx*)data;
+    unsigned char scratch[128] = {0};
+    int i;
+    for (i = 0; i < 4000000 / 128; i++) {
+        AES192_encrypt(ctx, 8, scratch, scratch);
+    }
+}
+
+static void bench_AES192_decrypt_par(void* data) {
+    const AES192_ctx* ctx = (const AES192_ctx*)data;
+    unsigned char scratch[128] = {0};
+    int i;
+    for (i = 0; i < 4000000 / 128; i++) {
+        AES192_decrypt(ctx, 8, scratch, scratch);
     }
 }
 
@@ -153,6 +189,24 @@ static void bench_AES256_decrypt(void* data) {
     }
 }
 
+static void bench_AES256_encrypt_par(void* data) {
+    const AES256_ctx* ctx = (const AES256_ctx*)data;
+    unsigned char scratch[128] = {0};
+    int i;
+    for (i = 0; i < 4000000 / 128; i++) {
+        AES256_encrypt(ctx, 8, scratch, scratch);
+    }
+}
+
+static void bench_AES256_decrypt_par(void* data) {
+    const AES256_ctx* ctx = (const AES256_ctx*)data;
+    unsigned char scratch[128] = {0};
+    int i;
+    for (i = 0; i < 4000000 / 128; i++) {
+        AES256_decrypt(ctx, 8, scratch, scratch);
+    }
+}
+
 int main(void) {
     AES128_ctx ctx128;
     AES192_ctx ctx192;
@@ -160,11 +214,17 @@ int main(void) {
     run_benchmark("aes128_init", bench_AES128_init, NULL, NULL, &ctx128, 20, 50000);
     run_benchmark("aes128_encrypt_byte", bench_AES128_encrypt, bench_AES128_encrypt_setup, NULL, &ctx128, 20, 4000000);
     run_benchmark("aes128_decrypt_byte", bench_AES128_decrypt, bench_AES128_encrypt_setup, NULL, &ctx128, 20, 4000000);
+    run_benchmark("aes128_encrypt_par_byte", bench_AES128_encrypt_par, bench_AES128_encrypt_setup, NULL, &ctx128, 20, 4000000);
+    run_benchmark("aes128_decrypt_par_byte", bench_AES128_decrypt_par, bench_AES128_encrypt_setup, NULL, &ctx128, 20, 4000000);
     run_benchmark("aes192_init", bench_AES192_init, NULL, NULL, &ctx192, 20, 50000);
     run_benchmark("aes192_encrypt_byte", bench_AES192_encrypt, bench_AES192_encrypt_setup, NULL, &ctx192, 20, 4000000);
     run_benchmark("aes192_decrypt_byte", bench_AES192_decrypt, bench_AES192_encrypt_setup, NULL, &ctx192, 20, 4000000);
+    run_benchmark("aes192_encrypt_par_byte", bench_AES192_encrypt_par, bench_AES192_encrypt_setup, NULL, &ctx192, 20, 4000000);
+    run_benchmark("aes192_decrypt_par_byte", bench_AES192_decrypt_par, bench_AES192_encrypt_setup, NULL, &ctx192, 20, 4000000);
     run_benchmark("aes256_init", bench_AES256_init, NULL, NULL, &ctx256, 20, 50000);
     run_benchmark("aes256_encrypt_byte", bench_AES256_encrypt, bench_AES256_encrypt_setup, NULL, &ctx256, 20, 4000000);
     run_benchmark("aes256_decrypt_byte", bench_AES256_decrypt, bench_AES256_encrypt_setup, NULL, &ctx256, 20, 4000000);
+    run_benchmark("aes256_encrypt_par_byte", bench_AES256_encrypt_par, bench_AES256_encrypt_setup, NULL, &ctx256, 20, 4000000);
+    run_benchmark("aes256_decrypt_par_byte", bench_AES256_decrypt_par, bench_AES256_encrypt_setup, NULL, &ctx256, 20, 4000000);
     return 0;
 }
