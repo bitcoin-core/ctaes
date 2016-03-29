@@ -10,8 +10,22 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#ifndef CTAES_PAR
+#define CTAES_PAR 4
+#endif
+
+#if CTAES_PAR == 1
+typedef uint16_t ctaes_slice_t;
+#elif CTAES_PAR == 2
+typedef uint32_t ctaes_slice_t;
+#elif CTAES_PAR == 4
+typedef uint64_t ctaes_slice_t;
+#else
+#  error "CTAES_PAR set to an unsupported value"
+#endif
+
 typedef struct {
-    uint16_t slice[8];
+    ctaes_slice_t slice[8];
 } AES_state;
 
 typedef struct {

@@ -22,27 +22,27 @@
  */
 
 /** Convert a byte to sliced form, storing it corresponding to given row and column in s */
-static void LoadByte(AES_state* s, unsigned char byte, int r, int c) {
+static void LoadByte(AES_state* s, unsigned char byte, int r, int c, int p) {
     int i;
     for (i = 0; i < 8; i++) {
-        s->slice[i] |= (byte & 1) << (r * 4 + c);
+        s->slice[i] |= ((ctaes_slice_t)(byte & 1)) << ((r * 4 + c) * CTAES_PAR + p);
         byte >>= 1;
     }
 }
 
 /** Load 16 bytes of data into 8 sliced integers */
-static void LoadBytes(AES_state *s, const unsigned char* data16) {
+static void LoadBytes(AES_state *s, const unsigned char* data16, int p) {
     int b, c;
     for (c = 0; c < 4; c++) {
         int r;
         for (r = 0; r < 4; r++) {
-            LoadByte(s, *(data16++), r, c);
+            LoadByte(s, *(data16++), r, c, p);
         }
     }
 }
 
 /** Convert 8 sliced integers into 16 bytes of data */
-static void SaveBytes(unsigned char* data16, const AES_state *s) {
+static void SaveBytes(unsigned char* data16, const AES_state *s, int p) {
     int c;
     for (c = 0; c < 4; c++) {
         int r;
@@ -50,7 +50,7 @@ static void SaveBytes(unsigned char* data16, const AES_state *s) {
             int b;
             uint8_t v = 0;
             for (b = 0; b < 8; b++) {
-                v |= ((s->slice[b] >> (r * 4 + c)) & 1) << b;
+                v |= ((s->slice[b] >> ((r * 4 + c) * CTAES_PAR + p)) & 1) << b;
             }
             *(data16++) = v;
         }
@@ -63,17 +63,17 @@ static void SaveBytes(unsigned char* data16, const AES_state *s) {
 */
 static void SubBytes(AES_state *s, int inv) {
     /* Load the bit slices */
-    uint16_t U0 = s->slice[7], U1 = s->slice[6], U2 = s->slice[5], U3 = s->slice[4];
-    uint16_t U4 = s->slice[3], U5 = s->slice[2], U6 = s->slice[1], U7 = s->slice[0];
+    ctaes_slice_t U0 = s->slice[7], U1 = s->slice[6], U2 = s->slice[5], U3 = s->slice[4];
+    ctaes_slice_t U4 = s->slice[3], U5 = s->slice[2], U6 = s->slice[1], U7 = s->slice[0];
 
-    uint16_t T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16;
-    uint16_t T17, T18, T19, T20, T21, T22, T23, T24, T25, T26, T27, D;
-    uint16_t M1, M6, M11, M13, M15, M20, M21, M22, M23, M25, M37, M38, M39, M40;
-    uint16_t M41, M42, M43, M44, M45, M46, M47, M48, M49, M50, M51, M52, M53, M54;
-    uint16_t M55, M56, M57, M58, M59, M60, M61, M62, M63;
+    ctaes_slice_t T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16;
+    ctaes_slice_t T17, T18, T19, T20, T21, T22, T23, T24, T25, T26, T27, D;
+    ctaes_slice_t M1, M6, M11, M13, M15, M20, M21, M22, M23, M25, M37, M38, M39, M40;
+    ctaes_slice_t M41, M42, M43, M44, M45, M46, M47, M48, M49, M50, M51, M52, M53, M54;
+    ctaes_slice_t M55, M56, M57, M58, M59, M60, M61, M62, M63;
 
     if (inv) {
-        uint16_t R5, R13, R17, R18, R19;
+        ctaes_slice_t R5, R13, R17, R18, R19;
         /* Undo linear postprocessing */
         T23 = U0 ^ U3;
         T22 = ~(U1 ^ U3);
@@ -175,35 +175,35 @@ static void SubBytes(AES_state *s, int inv) {
 
     if (inv){
         /* Undo linear preprocessing */
-        uint16_t P0 = M52 ^ M61;
-        uint16_t P1 = M58 ^ M59;
-        uint16_t P2 = M54 ^ M62;
-        uint16_t P3 = M47 ^ M50;
-        uint16_t P4 = M48 ^ M56;
-        uint16_t P5 = M46 ^ M51;
-        uint16_t P6 = M49 ^ M60;
-        uint16_t P7 = P0 ^ P1;
-        uint16_t P8 = M50 ^ M53;
-        uint16_t P9 = M55 ^ M63;
-        uint16_t P10 = M57 ^ P4;
-        uint16_t P11 = P0 ^ P3;
-        uint16_t P12 = M46 ^ M48;
-        uint16_t P13 = M49 ^ M51;
-        uint16_t P14 = M49 ^ M62;
-        uint16_t P15 = M54 ^ M59;
-        uint16_t P16 = M57 ^ M61;
-        uint16_t P17 = M58 ^ P2;
-        uint16_t P18 = M63 ^ P5;
-        uint16_t P19 = P2 ^ P3;
-        uint16_t P20 = P4 ^ P6;
-        uint16_t P22 = P2 ^ P7;
-        uint16_t P23 = P7 ^ P8;
-        uint16_t P24 = P5 ^ P7;
-        uint16_t P25 = P6 ^ P10;
-        uint16_t P26 = P9 ^ P11;
-        uint16_t P27 = P10 ^ P18;
-        uint16_t P28 = P11 ^ P25;
-        uint16_t P29 = P15 ^ P20;
+        ctaes_slice_t P0 = M52 ^ M61;
+        ctaes_slice_t P1 = M58 ^ M59;
+        ctaes_slice_t P2 = M54 ^ M62;
+        ctaes_slice_t P3 = M47 ^ M50;
+        ctaes_slice_t P4 = M48 ^ M56;
+        ctaes_slice_t P5 = M46 ^ M51;
+        ctaes_slice_t P6 = M49 ^ M60;
+        ctaes_slice_t P7 = P0 ^ P1;
+        ctaes_slice_t P8 = M50 ^ M53;
+        ctaes_slice_t P9 = M55 ^ M63;
+        ctaes_slice_t P10 = M57 ^ P4;
+        ctaes_slice_t P11 = P0 ^ P3;
+        ctaes_slice_t P12 = M46 ^ M48;
+        ctaes_slice_t P13 = M49 ^ M51;
+        ctaes_slice_t P14 = M49 ^ M62;
+        ctaes_slice_t P15 = M54 ^ M59;
+        ctaes_slice_t P16 = M57 ^ M61;
+        ctaes_slice_t P17 = M58 ^ P2;
+        ctaes_slice_t P18 = M63 ^ P5;
+        ctaes_slice_t P19 = P2 ^ P3;
+        ctaes_slice_t P20 = P4 ^ P6;
+        ctaes_slice_t P22 = P2 ^ P7;
+        ctaes_slice_t P23 = P7 ^ P8;
+        ctaes_slice_t P24 = P5 ^ P7;
+        ctaes_slice_t P25 = P6 ^ P10;
+        ctaes_slice_t P26 = P9 ^ P11;
+        ctaes_slice_t P27 = P10 ^ P18;
+        ctaes_slice_t P28 = P11 ^ P25;
+        ctaes_slice_t P29 = P15 ^ P20;
         s->slice[7] = P13 ^ P22;
         s->slice[6] = P26 ^ P29;
         s->slice[5] = P17 ^ P28;
@@ -214,36 +214,36 @@ static void SubBytes(AES_state *s, int inv) {
         s->slice[0] = P9 ^ P16;
     } else {
         /* Linear postprocessing */
-        uint16_t L0 = M61 ^ M62;
-        uint16_t L1 = M50 ^ M56;
-        uint16_t L2 = M46 ^ M48;
-        uint16_t L3 = M47 ^ M55;
-        uint16_t L4 = M54 ^ M58;
-        uint16_t L5 = M49 ^ M61;
-        uint16_t L6 = M62 ^ L5;
-        uint16_t L7 = M46 ^ L3;
-        uint16_t L8 = M51 ^ M59;
-        uint16_t L9 = M52 ^ M53;
-        uint16_t L10 = M53 ^ L4;
-        uint16_t L11 = M60 ^ L2;
-        uint16_t L12 = M48 ^ M51;
-        uint16_t L13 = M50 ^ L0;
-        uint16_t L14 = M52 ^ M61;
-        uint16_t L15 = M55 ^ L1;
-        uint16_t L16 = M56 ^ L0;
-        uint16_t L17 = M57 ^ L1;
-        uint16_t L18 = M58 ^ L8;
-        uint16_t L19 = M63 ^ L4;
-        uint16_t L20 = L0 ^ L1;
-        uint16_t L21 = L1 ^ L7;
-        uint16_t L22 = L3 ^ L12;
-        uint16_t L23 = L18 ^ L2;
-        uint16_t L24 = L15 ^ L9;
-        uint16_t L25 = L6 ^ L10;
-        uint16_t L26 = L7 ^ L9;
-        uint16_t L27 = L8 ^ L10;
-        uint16_t L28 = L11 ^ L14;
-        uint16_t L29 = L11 ^ L17;
+        ctaes_slice_t L0 = M61 ^ M62;
+        ctaes_slice_t L1 = M50 ^ M56;
+        ctaes_slice_t L2 = M46 ^ M48;
+        ctaes_slice_t L3 = M47 ^ M55;
+        ctaes_slice_t L4 = M54 ^ M58;
+        ctaes_slice_t L5 = M49 ^ M61;
+        ctaes_slice_t L6 = M62 ^ L5;
+        ctaes_slice_t L7 = M46 ^ L3;
+        ctaes_slice_t L8 = M51 ^ M59;
+        ctaes_slice_t L9 = M52 ^ M53;
+        ctaes_slice_t L10 = M53 ^ L4;
+        ctaes_slice_t L11 = M60 ^ L2;
+        ctaes_slice_t L12 = M48 ^ M51;
+        ctaes_slice_t L13 = M50 ^ L0;
+        ctaes_slice_t L14 = M52 ^ M61;
+        ctaes_slice_t L15 = M55 ^ L1;
+        ctaes_slice_t L16 = M56 ^ L0;
+        ctaes_slice_t L17 = M57 ^ L1;
+        ctaes_slice_t L18 = M58 ^ L8;
+        ctaes_slice_t L19 = M63 ^ L4;
+        ctaes_slice_t L20 = L0 ^ L1;
+        ctaes_slice_t L21 = L1 ^ L7;
+        ctaes_slice_t L22 = L3 ^ L12;
+        ctaes_slice_t L23 = L18 ^ L2;
+        ctaes_slice_t L24 = L15 ^ L9;
+        ctaes_slice_t L25 = L6 ^ L10;
+        ctaes_slice_t L26 = L7 ^ L9;
+        ctaes_slice_t L27 = L8 ^ L10;
+        ctaes_slice_t L28 = L11 ^ L14;
+        ctaes_slice_t L29 = L11 ^ L17;
         s->slice[7] = L6 ^ L24;
         s->slice[6] = ~(L16 ^ L26);
         s->slice[5] = ~(L19 ^ L28);
@@ -255,15 +255,15 @@ static void SubBytes(AES_state *s, int inv) {
     }
 }
 
-#define BIT_RANGE(from,to) (((1 << ((to) - (from))) - 1) << (from))
+#define BIT_RANGE(from,to) (((((ctaes_slice_t)1) << ((to - from) * CTAES_PAR)) - 1) << (from * CTAES_PAR))
 
-#define BIT_RANGE_LEFT(x,from,to,shift) (((x) & BIT_RANGE((from), (to))) << (shift))
-#define BIT_RANGE_RIGHT(x,from,to,shift) (((x) & BIT_RANGE((from), (to))) >> (shift))
+#define BIT_RANGE_LEFT(x,from,to,shift) (((x) & BIT_RANGE(from, to)) << (shift * CTAES_PAR))
+#define BIT_RANGE_RIGHT(x,from,to,shift) (((x) & BIT_RANGE(from, to)) >> (shift * CTAES_PAR))
 
 static void ShiftRows(AES_state* s) {
     int i;
     for (i = 0; i < 8; i++) {
-        uint16_t v = s->slice[i];
+        ctaes_slice_t v = s->slice[i];
         s->slice[i] =
             (v & BIT_RANGE(0, 4)) |
             BIT_RANGE_LEFT(v, 4, 5, 3) | BIT_RANGE_RIGHT(v, 5, 8, 1) |
@@ -275,7 +275,7 @@ static void ShiftRows(AES_state* s) {
 static void InvShiftRows(AES_state* s) {
     int i;
     for (i = 0; i < 8; i++) {
-        uint16_t v = s->slice[i];
+        ctaes_slice_t v = s->slice[i];
         s->slice[i] =
             (v & BIT_RANGE(0, 4)) |
             BIT_RANGE_LEFT(v, 4, 7, 1) | BIT_RANGE_RIGHT(v, 7, 8, 3) |
@@ -284,22 +284,22 @@ static void InvShiftRows(AES_state* s) {
     }
 }
 
-#define ROT(x,b) (((x) >> ((b) * 4)) | ((x) << ((4-(b)) * 4)))
+#define ROT(x,b) (((x) >> ((b) * 4 * CTAES_PAR)) | ((x) << ((4-(b)) * 4 * CTAES_PAR)))
 
 static void MixColumns(AES_state* s) {
     /* b(r,c) = 02 * a(r,c) + 02 * a(r+1,c) + a(r+1,c) + a(r+2,c) + a(r+3,c) */
 
-    uint16_t a0 = s->slice[0], a1 = s->slice[1], a2 = s->slice[2], a3 = s->slice[3];
-    uint16_t a4 = s->slice[4], a5 = s->slice[5], a6 = s->slice[6], a7 = s->slice[7];
+    ctaes_slice_t a0 = s->slice[0], a1 = s->slice[1], a2 = s->slice[2], a3 = s->slice[3];
+    ctaes_slice_t a4 = s->slice[4], a5 = s->slice[5], a6 = s->slice[6], a7 = s->slice[7];
 
-    uint16_t a0_01 = a0 ^ ROT(a0,1), a0_123 = ROT(a0_01,1) ^ ROT(a0, 3);
-    uint16_t a1_01 = a1 ^ ROT(a1,1), a1_123 = ROT(a1_01,1) ^ ROT(a1, 3);
-    uint16_t a2_01 = a2 ^ ROT(a2,1), a2_123 = ROT(a2_01,1) ^ ROT(a2, 3);
-    uint16_t a3_01 = a3 ^ ROT(a3,1), a3_123 = ROT(a3_01,1) ^ ROT(a3, 3);
-    uint16_t a4_01 = a4 ^ ROT(a4,1), a4_123 = ROT(a4_01,1) ^ ROT(a4, 3);
-    uint16_t a5_01 = a5 ^ ROT(a5,1), a5_123 = ROT(a5_01,1) ^ ROT(a5, 3);
-    uint16_t a6_01 = a6 ^ ROT(a6,1), a6_123 = ROT(a6_01,1) ^ ROT(a6, 3);
-    uint16_t a7_01 = a7 ^ ROT(a7,1), a7_123 = ROT(a7_01,1) ^ ROT(a7, 3);
+    ctaes_slice_t a0_01 = a0 ^ ROT(a0,1), a0_123 = ROT(a0_01,1) ^ ROT(a0, 3);
+    ctaes_slice_t a1_01 = a1 ^ ROT(a1,1), a1_123 = ROT(a1_01,1) ^ ROT(a1, 3);
+    ctaes_slice_t a2_01 = a2 ^ ROT(a2,1), a2_123 = ROT(a2_01,1) ^ ROT(a2, 3);
+    ctaes_slice_t a3_01 = a3 ^ ROT(a3,1), a3_123 = ROT(a3_01,1) ^ ROT(a3, 3);
+    ctaes_slice_t a4_01 = a4 ^ ROT(a4,1), a4_123 = ROT(a4_01,1) ^ ROT(a4, 3);
+    ctaes_slice_t a5_01 = a5 ^ ROT(a5,1), a5_123 = ROT(a5_01,1) ^ ROT(a5, 3);
+    ctaes_slice_t a6_01 = a6 ^ ROT(a6,1), a6_123 = ROT(a6_01,1) ^ ROT(a6, 3);
+    ctaes_slice_t a7_01 = a7 ^ ROT(a7,1), a7_123 = ROT(a7_01,1) ^ ROT(a7, 3);
 
     s->slice[0] = a7_01 ^ a0_123;
     s->slice[1] = a7_01 ^ a0_01 ^ a1_123;
@@ -319,17 +319,17 @@ static void InvMixColumns(AES_state* s) {
      *          01 * (a(r+1,c) + a(r+2,c) + a(r+3,c))
      */
 
-    uint16_t a0 = s->slice[0], a1 = s->slice[1], a2 = s->slice[2], a3 = s->slice[3];
-    uint16_t a4 = s->slice[4], a5 = s->slice[5], a6 = s->slice[6], a7 = s->slice[7];
+    ctaes_slice_t a0 = s->slice[0], a1 = s->slice[1], a2 = s->slice[2], a3 = s->slice[3];
+    ctaes_slice_t a4 = s->slice[4], a5 = s->slice[5], a6 = s->slice[6], a7 = s->slice[7];
 
-    uint16_t a0_01 = a0 ^ ROT(a0, 1), a0_12 = ROT(a0_01, 1), a0_123 = a0_12 ^ ROT(a0, 3), a0_0123 = a0 ^ a0_123, a0_02 = a0_01 ^ a0_12;
-    uint16_t a1_01 = a1 ^ ROT(a1, 1), a1_12 = ROT(a1_01, 1), a1_123 = a1_12 ^ ROT(a1, 3), a1_0123 = a1 ^ a1_123, a1_02 = a1_01 ^ a1_12;
-    uint16_t a2_01 = a2 ^ ROT(a2, 1), a2_12 = ROT(a2_01, 1), a2_123 = a2_12 ^ ROT(a2, 3), a2_0123 = a2 ^ a2_123, a2_02 = a2_01 ^ a2_12;
-    uint16_t a3_01 = a3 ^ ROT(a3, 1), a3_12 = ROT(a3_01, 1), a3_123 = a3_12 ^ ROT(a3, 3), a3_0123 = a3 ^ a3_123, a3_02 = a3_01 ^ a3_12;
-    uint16_t a4_01 = a4 ^ ROT(a4, 1), a4_12 = ROT(a4_01, 1), a4_123 = a4_12 ^ ROT(a4, 3), a4_0123 = a4 ^ a4_123, a4_02 = a4_01 ^ a4_12;
-    uint16_t a5_01 = a5 ^ ROT(a5, 1), a5_12 = ROT(a5_01, 1), a5_123 = a5_12 ^ ROT(a5, 3), a5_0123 = a5 ^ a5_123, a5_02 = a5_01 ^ a5_12;
-    uint16_t a6_01 = a6 ^ ROT(a6, 1), a6_12 = ROT(a6_01, 1), a6_123 = a6_12 ^ ROT(a6, 3), a6_0123 = a6 ^ a6_123, a6_02 = a6_01 ^ a6_12;
-    uint16_t a7_01 = a7 ^ ROT(a7, 1), a7_12 = ROT(a7_01, 1), a7_123 = a7_12 ^ ROT(a7, 3), a7_0123 = a7 ^ a7_123, a7_02 = a7_01 ^ a7_12;
+    ctaes_slice_t a0_01 = a0 ^ ROT(a0, 1), a0_12 = ROT(a0_01, 1), a0_123 = a0_12 ^ ROT(a0, 3), a0_0123 = a0 ^ a0_123, a0_02 = a0_01 ^ a0_12;
+    ctaes_slice_t a1_01 = a1 ^ ROT(a1, 1), a1_12 = ROT(a1_01, 1), a1_123 = a1_12 ^ ROT(a1, 3), a1_0123 = a1 ^ a1_123, a1_02 = a1_01 ^ a1_12;
+    ctaes_slice_t a2_01 = a2 ^ ROT(a2, 1), a2_12 = ROT(a2_01, 1), a2_123 = a2_12 ^ ROT(a2, 3), a2_0123 = a2 ^ a2_123, a2_02 = a2_01 ^ a2_12;
+    ctaes_slice_t a3_01 = a3 ^ ROT(a3, 1), a3_12 = ROT(a3_01, 1), a3_123 = a3_12 ^ ROT(a3, 3), a3_0123 = a3 ^ a3_123, a3_02 = a3_01 ^ a3_12;
+    ctaes_slice_t a4_01 = a4 ^ ROT(a4, 1), a4_12 = ROT(a4_01, 1), a4_123 = a4_12 ^ ROT(a4, 3), a4_0123 = a4 ^ a4_123, a4_02 = a4_01 ^ a4_12;
+    ctaes_slice_t a5_01 = a5 ^ ROT(a5, 1), a5_12 = ROT(a5_01, 1), a5_123 = a5_12 ^ ROT(a5, 3), a5_0123 = a5 ^ a5_123, a5_02 = a5_01 ^ a5_12;
+    ctaes_slice_t a6_01 = a6 ^ ROT(a6, 1), a6_12 = ROT(a6_01, 1), a6_123 = a6_12 ^ ROT(a6, 3), a6_0123 = a6 ^ a6_123, a6_02 = a6_01 ^ a6_12;
+    ctaes_slice_t a7_01 = a7 ^ ROT(a7, 1), a7_12 = ROT(a7_01, 1), a7_123 = a7_12 ^ ROT(a7, 3), a7_0123 = a7 ^ a7_123, a7_02 = a7_01 ^ a7_12;
 
     s->slice[0] = a0_123 ^ a7_01 ^ a6_02 ^ a5_0123;
     s->slice[1] = a1_123 ^ a0_01 ^ a7_12 ^ a6_02 ^ a5_0123 ^ a6_0123;
@@ -352,7 +352,13 @@ static void AddRoundKey(AES_state* s, const AES_state* round) {
 static void GetOneColumn(AES_state* s, const AES_state* a, int c) {
     int b;
     for (b = 0; b < 8; b++) {
+#if CTAES_PAR == 1
         s->slice[b] = (a->slice[b] >> c) & 0x1111;
+#elif CTAES_PAR == 2
+        s->slice[b] = (a->slice[b] >> (2 * c)) & 0x1010101;
+#elif CTAES_PAR == 4
+        s->slice[b] = (a->slice[b] >> (4 * c)) & 0x1000100010001ULL;
+#endif
     }
 }
 
@@ -360,7 +366,13 @@ static void GetOneColumn(AES_state* s, const AES_state* a, int c) {
 static void KeySetupColumnMix(AES_state* s, AES_state* r, const AES_state* a, int c1, int c2) {
     int b;
     for (b = 0; b < 8; b++) {
+#if CTAES_PAR == 1
         r->slice[b] |= ((s->slice[b] ^= ((a->slice[b] >> c2) & 0x1111)) & 0x1111) << c1;
+#elif CTAES_PAR == 2
+        r->slice[b] |= ((s->slice[b] ^= ((a->slice[b] >> (2 * c2)) & 0x1010101)) & 0x1010101) << (c1 * 2);
+#elif CTAES_PAR == 4
+        r->slice[b] |= ((s->slice[b] ^= ((a->slice[b] >> (4 * c2)) & 0x1000100010001ULL)) & 0x1000100010001ULL) << (c1 * 4);
+#endif
     }
 }
 
@@ -368,13 +380,27 @@ static void KeySetupColumnMix(AES_state* s, AES_state* r, const AES_state* a, in
 static void KeySetupTransform(AES_state* s, const AES_state* r) {
     int b;
     for (b = 0; b < 8; b++) {
-        s->slice[b] = ((s->slice[b] >> 4) | (s->slice[b] << 12)) ^ r->slice[b];
+        s->slice[b] = ((s->slice[b] >> (4 * CTAES_PAR)) | (s->slice[b] << (12 * CTAES_PAR))) ^ r->slice[b];
     }
+}
+
+static void OneToAll(AES_state* s) {
+#if CTAES_PAR == 2
+    int b;
+    for (b = 0; b < 8; b++) {
+        s->slice[b] = (s->slice[b] & 0x55555555) * 3;
+    }
+#elif CTAES_PAR == 4
+    int b;
+    for (b = 0; b < 8; b++) {
+        s->slice[b] = (s->slice[b] & 0x1111111111111111ULL) * 0xF;
+    }
+#endif
 }
 
 /* Multiply the cells in s by x, as polynomials over GF(2) mod x^8 + x^4 + x^3 + x + 1 */
 static void MultX(AES_state* s) {
-    uint16_t top = s->slice[7];
+    ctaes_slice_t top = s->slice[7];
     s->slice[7] = s->slice[6];
     s->slice[6] = s->slice[5];
     s->slice[5] = s->slice[4];
@@ -416,7 +442,7 @@ static void AES_setup(AES_state* rounds, const uint8_t* key, int nkeywords, int 
     for (i = 0; i < nkeywords; i++) {
         int r;
         for (r = 0; r < 4; r++) {
-            LoadByte(&rounds[i >> 2], *(key++), r, i & 3);
+            LoadByte(&rounds[i >> 2], *(key++), r, i & 3, 0);
         }
     }
 
@@ -434,13 +460,20 @@ static void AES_setup(AES_state* rounds, const uint8_t* key, int nkeywords, int 
         if (++pos == nkeywords) pos = 0;
         KeySetupColumnMix(&column, &rounds[i >> 2], &rounds[(i - nkeywords) >> 2], i & 3, (i - nkeywords) & 3);
     }
+
+    for (i = 0; i <= nrounds; i++) {
+        OneToAll(rounds + i);
+    }
 }
 
-static void AES_encrypt(const AES_state* rounds, int nrounds, unsigned char* cipher16, const unsigned char* plain16) {
+static void AES_encrypt(const AES_state* rounds, int nrounds, int blocks, unsigned char* cipher16, const unsigned char* plain16) {
     AES_state s = {{0}};
-    int round;
+    int round, block;
 
-    LoadBytes(&s, plain16);
+    for (block = 0; block < blocks; block++) {
+        LoadBytes(&s, plain16, block);
+        plain16 += 16;
+    }
     AddRoundKey(&s, rounds++);
 
     for (round = 1; round < nrounds; round++) {
@@ -454,20 +487,26 @@ static void AES_encrypt(const AES_state* rounds, int nrounds, unsigned char* cip
     ShiftRows(&s);
     AddRoundKey(&s, rounds);
 
-    SaveBytes(cipher16, &s);
+    for (block = 0; block < blocks; block++) {
+        SaveBytes(cipher16, &s, block);
+        cipher16 += 16;
+    }
 }
 
-static void AES_decrypt(const AES_state* rounds, int nrounds, unsigned char* plain16, const unsigned char* cipher16) {
+static void AES_decrypt(const AES_state* rounds, int nrounds, int blocks, unsigned char* plain16, const unsigned char* cipher16) {
     /* Most AES decryption implementations use the alternate scheme
      * (the Equivalent Inverse Cipher), which looks more like encryption, but
      * needs different round constants. We can't reuse any code here anyway, so
      * don't bother. */
     AES_state s = {{0}};
-    int round;
+    int round, block;
 
     rounds += nrounds;
 
-    LoadBytes(&s, cipher16);
+    for (block = 0; block < blocks; block++) {
+        LoadBytes(&s, cipher16, block);
+        cipher16 += 16;
+    }
     AddRoundKey(&s, rounds--);
 
     for (round = 1; round < nrounds; round++) {
@@ -481,7 +520,10 @@ static void AES_decrypt(const AES_state* rounds, int nrounds, unsigned char* pla
     SubBytes(&s, 1);
     AddRoundKey(&s, rounds);
 
-    SaveBytes(plain16, &s);
+    for (block = 0; block < blocks; block++) {
+        SaveBytes(plain16, &s, block);
+        plain16 += 16;
+    }
 }
 
 void AES128_init(AES128_ctx* ctx, const unsigned char* key16) {
@@ -489,19 +531,31 @@ void AES128_init(AES128_ctx* ctx, const unsigned char* key16) {
 }
 
 void AES128_encrypt(const AES128_ctx* ctx, size_t blocks, unsigned char* cipher16, const unsigned char* plain16) {
-    while (blocks--) {
-        AES_encrypt(ctx->rk, 10, cipher16, plain16);
-        cipher16 += 16;
-        plain16 += 16;
+    while (blocks >= CTAES_PAR) {
+        AES_encrypt(ctx->rk, 10, CTAES_PAR, cipher16, plain16);
+        cipher16 += 16 * CTAES_PAR;
+        plain16 += 16 * CTAES_PAR;
+        blocks -= CTAES_PAR;
     }
+#if CTAES_PAR > 1
+    if (blocks) {
+        AES_encrypt(ctx->rk, 10, blocks, cipher16, plain16);
+    }
+#endif
 }
 
 void AES128_decrypt(const AES128_ctx* ctx, size_t blocks, unsigned char* plain16, const unsigned char* cipher16) {
-    while (blocks--) {
-        AES_decrypt(ctx->rk, 10, plain16, cipher16);
-        cipher16 += 16;
-        plain16 += 16;
+    while (blocks >= CTAES_PAR) {
+        AES_decrypt(ctx->rk, 10, CTAES_PAR, plain16, cipher16);
+        cipher16 += 16 * CTAES_PAR;
+        plain16 += 16 * CTAES_PAR;
+        blocks -= CTAES_PAR;
     }
+#if CTAES_PAR > 1
+    if (blocks) {
+        AES_decrypt(ctx->rk, 10, blocks, plain16, cipher16);
+    }
+#endif
 }
 
 void AES192_init(AES192_ctx* ctx, const unsigned char* key24) {
@@ -509,20 +563,31 @@ void AES192_init(AES192_ctx* ctx, const unsigned char* key24) {
 }
 
 void AES192_encrypt(const AES192_ctx* ctx, size_t blocks, unsigned char* cipher16, const unsigned char* plain16) {
-    while (blocks--) {
-        AES_encrypt(ctx->rk, 12, cipher16, plain16);
-        cipher16 += 16;
-        plain16 += 16;
+    while (blocks >= CTAES_PAR) {
+        AES_encrypt(ctx->rk, 12, CTAES_PAR, cipher16, plain16);
+        cipher16 += 16 * CTAES_PAR;
+        plain16 += 16 * CTAES_PAR;
+        blocks -= CTAES_PAR;
     }
-
+#if CTAES_PAR > 1
+    if (blocks) {
+        AES_encrypt(ctx->rk, 12, blocks, cipher16, plain16);
+    }
+#endif
 }
 
 void AES192_decrypt(const AES192_ctx* ctx, size_t blocks, unsigned char* plain16, const unsigned char* cipher16) {
-    while (blocks--) {
-        AES_decrypt(ctx->rk, 12, plain16, cipher16);
-        cipher16 += 16;
-        plain16 += 16;
+    while (blocks >= CTAES_PAR) {
+        AES_decrypt(ctx->rk, 12, CTAES_PAR, plain16, cipher16);
+        cipher16 += 16 * CTAES_PAR;
+        plain16 += 16 * CTAES_PAR;
+        blocks -= CTAES_PAR;
     }
+#if CTAES_PAR > 1
+    if (blocks) {
+        AES_decrypt(ctx->rk, 12, blocks, plain16, cipher16);
+    }
+#endif
 }
 
 void AES256_init(AES256_ctx* ctx, const unsigned char* key32) {
@@ -530,17 +595,29 @@ void AES256_init(AES256_ctx* ctx, const unsigned char* key32) {
 }
 
 void AES256_encrypt(const AES256_ctx* ctx, size_t blocks, unsigned char* cipher16, const unsigned char* plain16) {
-    while (blocks--) {
-        AES_encrypt(ctx->rk, 14, cipher16, plain16);
-        cipher16 += 16;
-        plain16 += 16;
+    while (blocks >= CTAES_PAR) {
+        AES_encrypt(ctx->rk, 14, CTAES_PAR, cipher16, plain16);
+        cipher16 += 16 * CTAES_PAR;
+        plain16 += 16 * CTAES_PAR;
+        blocks -= CTAES_PAR;
     }
+#if CTAES_PAR > 1
+    if (blocks) {
+        AES_encrypt(ctx->rk, 14, blocks, cipher16, plain16);
+    }
+#endif
 }
 
 void AES256_decrypt(const AES256_ctx* ctx, size_t blocks, unsigned char* plain16, const unsigned char* cipher16) {
-    while (blocks--) {
-        AES_decrypt(ctx->rk, 14, plain16, cipher16);
-        cipher16 += 16;
-        plain16 += 16;
+    while (blocks >= CTAES_PAR) {
+        AES_decrypt(ctx->rk, 14, CTAES_PAR, plain16, cipher16);
+        cipher16 += 16 * CTAES_PAR;
+        plain16 += 16 * CTAES_PAR;
+        blocks -= CTAES_PAR;
     }
+#if CTAES_PAR > 1
+    if (blocks) {
+        AES_decrypt(ctx->rk, 14, blocks, plain16, cipher16);
+    }
+#endif
 }
