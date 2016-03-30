@@ -33,9 +33,6 @@ static void LoadByte(AES_state* s, unsigned char byte, int r, int c) {
 /** Load 16 bytes of data into 8 sliced integers */
 static void LoadBytes(AES_state *s, const unsigned char* data16) {
     int b, c;
-    for (b = 0; b < 8; b++) {
-        s->slice[b] = 0;
-    }
     for (c = 0; c < 4; c++) {
         int r;
         for (r = 0; r < 4; r++) {
@@ -440,7 +437,7 @@ static void AES_setup(AES_state* rounds, const uint8_t* key, int nkeywords, int 
 }
 
 static void AES_encrypt(const AES_state* rounds, int nrounds, unsigned char* cipher16, const unsigned char* plain16) {
-    AES_state s;
+    AES_state s = {{0}};
     int round;
 
     LoadBytes(&s, plain16);
@@ -465,7 +462,7 @@ static void AES_decrypt(const AES_state* rounds, int nrounds, unsigned char* pla
      * (the Equivalent Inverse Cipher), which looks more like encryption, but
      * needs different round constants. We can't reuse any code here anyway, so
      * don't bother. */
-    AES_state s;
+    AES_state s = {{0}};
     int round;
 
     rounds += nrounds;
