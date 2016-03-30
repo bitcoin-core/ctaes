@@ -75,7 +75,7 @@ static void bench_AES128_encrypt(void* data) {
     unsigned char scratch[16] = {0};
     int i;
     for (i = 0; i < 4000000 / 16; i++) {
-        AES128_encrypt(ctx, scratch, scratch);
+        AES128_encrypt(ctx, 1, scratch, scratch);
     }
 }
 
@@ -84,7 +84,7 @@ static void bench_AES128_decrypt(void* data) {
     unsigned char scratch[16] = {0};
     int i;
     for (i = 0; i < 4000000 / 16; i++) {
-        AES128_decrypt(ctx, scratch, scratch);
+        AES128_decrypt(ctx, 1, scratch, scratch);
     }
 }
 
@@ -107,7 +107,7 @@ static void bench_AES192_encrypt(void* data) {
     unsigned char scratch[16] = {0};
     int i;
     for (i = 0; i < 4000000 / 16; i++) {
-        AES192_encrypt(ctx, scratch, scratch);
+        AES192_encrypt(ctx, 1, scratch, scratch);
     }
 }
 
@@ -116,7 +116,7 @@ static void bench_AES192_decrypt(void* data) {
     unsigned char scratch[16] = {0};
     int i;
     for (i = 0; i < 4000000 / 16; i++) {
-        AES192_decrypt(ctx, scratch, scratch);
+        AES192_decrypt(ctx, 1, scratch, scratch);
     }
 }
 
@@ -140,7 +140,7 @@ static void bench_AES256_encrypt(void* data) {
     unsigned char scratch[16] = {0};
     int i;
     for (i = 0; i < 4000000 / 16; i++) {
-        AES256_encrypt(ctx, scratch, scratch);
+        AES256_encrypt(ctx, 1, scratch, scratch);
     }
 }
 
@@ -149,7 +149,7 @@ static void bench_AES256_decrypt(void* data) {
     unsigned char scratch[16] = {0};
     int i;
     for (i = 0; i < 4000000 / 16; i++) {
-        AES256_decrypt(ctx, scratch, scratch);
+        AES256_decrypt(ctx, 1, scratch, scratch);
     }
 }
 

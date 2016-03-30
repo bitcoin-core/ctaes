@@ -7,6 +7,7 @@
 #include "ctaes.h"
 
 #include <stdio.h>
+#include <string.h>
 #include <assert.h>
 
 typedef struct {
@@ -70,24 +71,24 @@ int main(void) {
                 AES128_ctx ctx;
                 from_hex(key, 16, test->key);
                 AES128_init(&ctx, key);
-                AES128_encrypt(&ctx, ciphered, plain);
-                AES128_decrypt(&ctx, deciphered, cipher);
+                AES128_encrypt(&ctx, 1, ciphered, plain);
+                AES128_decrypt(&ctx, 1, deciphered, cipher);
                 break;
             }
             case 192: {
                 AES192_ctx ctx;
                 from_hex(key, 24, test->key);
                 AES192_init(&ctx, key);
-                AES192_encrypt(&ctx, ciphered, plain);
-                AES192_decrypt(&ctx, deciphered, cipher);
+                AES192_encrypt(&ctx, 1, ciphered, plain);
+                AES192_decrypt(&ctx, 1, deciphered, cipher);
                 break;
             }
             case 256: {
                 AES256_ctx ctx;
                 from_hex(key, 32, test->key);
                 AES256_init(&ctx, key);
-                AES256_encrypt(&ctx, ciphered, plain);
-                AES256_decrypt(&ctx, deciphered, cipher);
+                AES256_encrypt(&ctx, 1, ciphered, plain);
+                AES256_decrypt(&ctx, 1, deciphered, cipher);
                 break;
             }
         }
