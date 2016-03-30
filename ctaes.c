@@ -258,11 +258,20 @@ static void SubBytes(AES_state *s, int inv) {
     }
 }
 
+#define BIT_RANGE(from,to) (((1 << ((to) - (from))) - 1) << (from))
+
+#define BIT_RANGE_LEFT(x,from,to,shift) (((x) & BIT_RANGE((from), (to))) << (shift))
+#define BIT_RANGE_RIGHT(x,from,to,shift) (((x) & BIT_RANGE((from), (to))) >> (shift))
+
 static void ShiftRows(AES_state* s) {
     int i;
     for (i = 0; i < 8; i++) {
         uint16_t v = s->slice[i];
-        s->slice[i] = (v & 0xF) | (v & 0x10) << 3 | (v & 0xE0) >> 1 | (v & 0x300) << 2 | (v & 0xC00) >> 2 | (v & 0x7000) << 1 | (v & 0x8000) >> 3;
+        s->slice[i] =
+            (v & BIT_RANGE(0, 4)) |
+            BIT_RANGE_LEFT(v, 4, 5, 3) | BIT_RANGE_RIGHT(v, 5, 8, 1) |
+            BIT_RANGE_LEFT(v, 8, 10, 2) | BIT_RANGE_RIGHT(v, 10, 12, 2) |
+            BIT_RANGE_LEFT(v, 12, 15, 1) | BIT_RANGE_RIGHT(v, 15, 16, 3);
     }
 }
 
@@ -270,7 +279,11 @@ static void InvShiftRows(AES_state* s) {
     int i;
     for (i = 0; i < 8; i++) {
         uint16_t v = s->slice[i];
-        s->slice[i] = (v & 0xF) | (v & 0x70) << 1 | (v & 0x80) >> 3 | (v & 0x300) << 2 | (v & 0xC00) >> 2 | (v & 0x1000) << 3 | (v & 0xE000) >> 1;
+        s->slice[i] =
+            (v & BIT_RANGE(0, 4)) |
+            BIT_RANGE_LEFT(v, 4, 7, 1) | BIT_RANGE_RIGHT(v, 7, 8, 3) |
+            BIT_RANGE_LEFT(v, 8, 10, 2) | BIT_RANGE_RIGHT(v, 10, 12, 2) |
+            BIT_RANGE_LEFT(v, 12, 13, 3) | BIT_RANGE_RIGHT(v, 13, 16, 1);
     }
 }
 
