@@ -35,7 +35,3 @@ Benchmark:
 
     $ gcc -O3 ctaes.c bench.c -o bench
 
-Review
-------
-
-Results of a formal review of the code can be found in http://bitcoin.sipa.be/ctaes/review.zip
