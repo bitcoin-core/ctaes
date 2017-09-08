@@ -524,7 +524,6 @@ void AES192_encrypt(const AES192_ctx* ctx, size_t blocks, unsigned char* cipher1
         cipher16 += 16;
         plain16 += 16;
     }
-
 }
 
 void AES192_decrypt(const AES192_ctx* ctx, size_t blocks, unsigned char* plain16, const unsigned char* cipher16) {
