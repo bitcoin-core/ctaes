@@ -4,8 +4,8 @@
  * file COPYING or http://www.opensource.org/licenses/mit-license.php.*
  **********************************************************************/
 
-#ifndef _CTAES_H_
-#define _CTAES_H_ 1
+#ifndef CTAES_H
+#define CTAES_H
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -38,4 +38,4 @@ void AES256_init(AES256_ctx* ctx, const unsigned char* key32);
 void AES256_encrypt(const AES256_ctx* ctx, size_t blocks, unsigned char* cipher16, const unsigned char* plain16);
 void AES256_decrypt(const AES256_ctx* ctx, size_t blocks, unsigned char* plain16, const unsigned char* cipher16);
 
-#endif
+#endif /* CTAES_H */
