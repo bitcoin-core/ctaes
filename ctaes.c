@@ -25,7 +25,7 @@
 static void LoadByte(AES_state* s, unsigned char byte, int r, int c) {
     int i;
     for (i = 0; i < 8; i++) {
-        s->slice[i] |= (byte & 1) << (r * 4 + c);
+        s->slice[i] |= (uint16_t)(byte & 1) << (r * 4 + c);
         byte >>= 1;
     }
 }
@@ -255,7 +255,7 @@ static void SubBytes(AES_state *s, int inv) {
     }
 }
 
-#define BIT_RANGE(from,to) (((1 << ((to) - (from))) - 1) << (from))
+#define BIT_RANGE(from,to) ((uint16_t)((1 << ((to) - (from))) - 1) << (from))
 
 #define BIT_RANGE_LEFT(x,from,to,shift) (((x) & BIT_RANGE((from), (to))) << (shift))
 #define BIT_RANGE_RIGHT(x,from,to,shift) (((x) & BIT_RANGE((from), (to))) >> (shift))
