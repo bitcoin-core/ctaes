@@ -65,4 +65,4 @@ void AES256_CBC_init(AES256_CBC_ctx* ctx, const unsigned char* key16, const uint
 void AES256_CBC_encrypt(AES256_CBC_ctx* ctx, size_t blocks, unsigned char* encrypted, const unsigned char* plain);
 void AES256_CBC_decrypt(AES256_CBC_ctx* ctx, size_t blocks, unsigned char* plain, const unsigned char *encrypted);
 
-#endif
+#endif /* CTAES_H */
