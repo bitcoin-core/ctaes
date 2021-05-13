@@ -35,6 +35,13 @@ Benchmark:
 
     $ gcc -O3 ctaes.c bench.c -o bench
 
+CMake for *nix and windows:
+
+    $ cmake . -B build/ -DCMAKE_BUILD_TYPE=MinSizeRel
+    $ cmake --build build/ --config MinSizeRel
+
+
+
 Review
 ------
 
