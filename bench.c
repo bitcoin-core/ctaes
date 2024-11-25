@@ -21,7 +21,7 @@ static void print_number(double x) {
     if (y < 0.0) {
         y = -y;
     }
-    while (y < 100.0) {
+    while (0.0 < y && y < 100.0) {
         y *= 10.0;
         c++;
     }
